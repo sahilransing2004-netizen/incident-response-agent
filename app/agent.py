@@ -3,7 +3,7 @@ from typing import TypedDict
 import httpx
 from langgraph.graph import END, START, StateGraph
 
-from app.checks import cpu_check
+from app.checks import contradiction_sentence, cpu_check
 from app.collectors import collect_logs, collect_metrics
 from app.config import get_settings
 
@@ -33,7 +33,7 @@ Rules:
 - Only name a cause that the evidence or the alert text actually supports.
 - If the evidence does not show a cause, write that the root cause is undetermined from the available evidence, and give the most common causes for this kind of alert as things to check.
 - cpu_rate_5m is CPU cores in use: 0.01 means 1 percent of one core, 0.9 means 90 percent. Compare it with any CPU figure in the alert text.
-- A line starting "CHECK: MISMATCH" was computed by code and is correct. When it is present, the first sentence of ROOT CAUSE must start with "The evidence contradicts the alert:" and copy both numbers from that line exactly, then say the alert is likely a false positive or stale. Never recalculate them. A line starting "CHECK: CONSISTENT" means do not claim a contradiction.
+- A line starting "CHECK: MISMATCH" was computed by code. When it is present, the contradiction is already stated for the reader, so do not repeat or recalculate any CPU numbers. Write 1-2 sentences on what to check next, and make REMEDIATION step 1 verifying the alert rule, its threshold and its query. Do not assume CPU is high in any step. A line starting "CHECK: CONSISTENT" means do not claim a contradiction.
 
 Reply in exactly this format and nothing else:
 ROOT CAUSE: 2-3 sentences.
@@ -85,6 +85,9 @@ def analyze(state: IncidentState) -> dict:
         evidence=state.get("evidence", ""),
     )
     cause, fix = parse_analysis(ask_llm(prompt))
+    opening = contradiction_sentence(state.get("evidence", ""))
+    if opening:
+        cause = f"{opening} {cause}"
     return {"root_cause": cause, "remediation": fix}
 
 

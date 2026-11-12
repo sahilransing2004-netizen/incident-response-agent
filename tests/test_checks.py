@@ -47,3 +47,31 @@ def test_gather_evidence_includes_check(monkeypatch):
     monkeypatch.setattr(agent, "collect_logs", lambda labels: "no log lines")
     state = {"alertname": "HighCPU", "annotations": {"summary": "CPU at 90%"}}
     assert "CHECK: MISMATCH" in agent.gather_evidence(state)["evidence"]
+
+
+def test_contradiction_sentence_uses_code_numbers():
+    from app.checks import contradiction_sentence
+
+    line = "CHECK: MISMATCH. Alert claims 90% CPU, measured 0.07% of one core."
+    sentence = contradiction_sentence(f"METRICS:\n...\n\n{line}\n\nLOGS:\n...")
+    assert sentence.startswith("The evidence contradicts the alert:")
+    assert "90% CPU" in sentence and "0.07%" in sentence
+
+
+def test_contradiction_sentence_none_when_consistent():
+    from app.checks import contradiction_sentence
+
+    assert contradiction_sentence("CHECK: CONSISTENT. Alert claims 90% CPU") is None
+
+
+def test_analyze_prepends_code_sentence(monkeypatch):
+    monkeypatch.setattr(
+        agent,
+        "ask_llm",
+        lambda prompt: "ROOT CAUSE: Check the alert rule.\nREMEDIATION: 1. Verify rule.",
+    )
+    evidence = "CHECK: MISMATCH. Alert claims 90% CPU, measured 0.07% of one core."
+    result = agent.analyze({"evidence": evidence})
+    assert result["root_cause"].startswith("The evidence contradicts the alert:")
+    assert "0.07%" in result["root_cause"]
+    assert "Check the alert rule." in result["root_cause"]

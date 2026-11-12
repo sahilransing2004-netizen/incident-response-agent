@@ -37,3 +37,19 @@ def cpu_check(alertname: str, annotations: dict, metrics: str) -> str:
         f"CHECK: {verdict}. Alert claims {claimed:g}% CPU, "
         f"measured {measured:.2f}% of one core."
     )
+
+
+MISMATCH = re.compile(
+    r"CHECK: MISMATCH\. Alert claims (\S+)% CPU, measured (\S+)% of one core\."
+)
+
+
+def contradiction_sentence(evidence: str) -> str | None:
+    match = MISMATCH.search(evidence)
+    if not match:
+        return None
+    return (
+        f"The evidence contradicts the alert: it claims {match.group(1)}% CPU "
+        f"but Prometheus measured {match.group(2)}% of one core, so the alert "
+        "is likely a false positive or stale."
+    )
