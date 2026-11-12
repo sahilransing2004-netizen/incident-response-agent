@@ -33,12 +33,26 @@ Rules:
 - Only name a cause that the evidence or the alert text actually supports.
 - If the evidence does not show a cause, write that the root cause is undetermined from the available evidence, and give the most common causes for this kind of alert as things to check.
 - cpu_rate_5m is CPU cores in use: 0.01 means 1 percent of one core, 0.9 means 90 percent. Compare it with any CPU figure in the alert text.
-- A line starting "CHECK: MISMATCH" was computed by code. When it is present, the contradiction is already stated for the reader, so do not repeat or recalculate any CPU numbers. Write 1-2 sentences on what to check next, and make REMEDIATION step 1 verifying the alert rule, its threshold and its query. Do not assume CPU is high in any step. A line starting "CHECK: CONSISTENT" means do not claim a contradiction.
+- A line starting "CHECK: CONSISTENT" means the alert matches the data, so do not claim a contradiction.
 
 Reply in exactly this format and nothing else:
 ROOT CAUSE: 2-3 sentences.
 REMEDIATION: 3 short numbered steps an on-call engineer should take now.
 """
+
+
+MISMATCH_FOLLOWUP = (
+    "The root cause of the original alert is undetermined from the evidence; "
+    "the alert rule or a stale alert is the first thing to check."
+)
+MISMATCH_STEPS = (
+    "1. Verify the alert rule: open its expression and threshold in Prometheus "
+    "and confirm it queries the metric and job you expect.\n"
+    "2. Check whether the alert is stale: compare when it started firing with "
+    "the current value, and look for old or duplicate alerts in Alertmanager.\n"
+    "3. If the rule is correct and the value really is low, silence or resolve "
+    "the alert and fix the rule so it stops firing on a healthy service."
+)
 
 
 def ask_llm(prompt: str) -> str:
@@ -77,6 +91,12 @@ def gather_evidence(state: IncidentState) -> dict:
 
 
 def analyze(state: IncidentState) -> dict:
+    opening = contradiction_sentence(state.get("evidence", ""))
+    if opening:
+        return {
+            "root_cause": f"{opening} {MISMATCH_FOLLOWUP}",
+            "remediation": MISMATCH_STEPS,
+        }
     prompt = PROMPT.format(
         alertname=state.get("alertname", "unknown"),
         severity=state.get("severity", "unknown"),
@@ -85,9 +105,6 @@ def analyze(state: IncidentState) -> dict:
         evidence=state.get("evidence", ""),
     )
     cause, fix = parse_analysis(ask_llm(prompt))
-    opening = contradiction_sentence(state.get("evidence", ""))
-    if opening:
-        cause = f"{opening} {cause}"
     return {"root_cause": cause, "remediation": fix}
 
 

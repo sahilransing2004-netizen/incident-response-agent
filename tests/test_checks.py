@@ -64,14 +64,14 @@ def test_contradiction_sentence_none_when_consistent():
     assert contradiction_sentence("CHECK: CONSISTENT. Alert claims 90% CPU") is None
 
 
-def test_analyze_prepends_code_sentence(monkeypatch):
-    monkeypatch.setattr(
-        agent,
-        "ask_llm",
-        lambda prompt: "ROOT CAUSE: Check the alert rule.\nREMEDIATION: 1. Verify rule.",
-    )
+def test_analyze_skips_llm_on_mismatch(monkeypatch):
+    def fail(prompt):
+        raise AssertionError("LLM should not be called on a mismatch")
+
+    monkeypatch.setattr(agent, "ask_llm", fail)
     evidence = "CHECK: MISMATCH. Alert claims 90% CPU, measured 0.07% of one core."
     result = agent.analyze({"evidence": evidence})
     assert result["root_cause"].startswith("The evidence contradicts the alert:")
     assert "0.07%" in result["root_cause"]
-    assert "Check the alert rule." in result["root_cause"]
+    assert "alert rule" in result["remediation"]
+    assert "high CPU" not in result["remediation"]
