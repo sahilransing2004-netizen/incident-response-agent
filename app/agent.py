@@ -31,6 +31,7 @@ Rules:
 - "no data" or "unavailable" in the evidence means the data could not be collected. It is NOT the cause of the incident. Never blame Prometheus, Loki or any monitoring tool for the alert.
 - Only name a cause that the evidence or the alert text actually supports.
 - If the evidence does not show a cause, write that the root cause is undetermined from the available evidence, and give the most common causes for this kind of alert as things to check.
+- If the evidence contradicts the alert (for example the alert reports high CPU but the measured value is low), say so explicitly in ROOT CAUSE and treat the alert as a possible false positive or stale reading instead of agreeing with it.
 
 Reply in exactly this format and nothing else:
 ROOT CAUSE: 2-3 sentences.
