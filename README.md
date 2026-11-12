@@ -1,5 +1,7 @@
 # Incident Response Agent
 
+[![CI](https://github.com/sahilransing2004-netizen/incident-response-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/sahilransing2004-netizen/incident-response-agent/actions/workflows/ci.yml)
+
 An alert-triage service for on-call engineers. Alertmanager sends a firing alert to a webhook; the agent pulls live evidence from Prometheus (and Loki, if available), asks a local LLM for a root-cause analysis and remediation steps, and stores the result so it can be read from an API.
 
 It runs fully locally: the model is served by [Ollama](https://ollama.com), so no alert data leaves your machine.
@@ -51,7 +53,7 @@ Requirements: Docker with Compose, and Ollama with the model pulled.
 ```bash
 ollama pull llama3.2:3b
 
-git clone <your-repo-url> && cd incident-response-agent
+git clone https://github.com/sahilransing2004-netizen/incident-response-agent.git && cd incident-response-agent
 cp .env.example .env        # then edit the three values
 docker compose up -d --build
 curl http://localhost:8001/health
