@@ -27,10 +27,14 @@ Annotations: {annotations}
 Evidence collected automatically:
 {evidence}
 
+Rules:
+- "no data" or "unavailable" in the evidence means the data could not be collected. It is NOT the cause of the incident. Never blame Prometheus, Loki or any monitoring tool for the alert.
+- Only name a cause that the evidence or the alert text actually supports.
+- If the evidence does not show a cause, write that the root cause is undetermined from the available evidence, and give the most common causes for this kind of alert as things to check.
+
 Reply in exactly this format and nothing else:
-ROOT CAUSE: the most likely root cause in 2-3 sentences.
+ROOT CAUSE: 2-3 sentences.
 REMEDIATION: 3 short numbered steps an on-call engineer should take now.
-If the evidence is missing or unavailable, say so and base your answer on the alert only.
 """
 
 
