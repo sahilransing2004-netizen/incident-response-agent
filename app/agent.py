@@ -3,6 +3,7 @@ from typing import TypedDict
 import httpx
 from langgraph.graph import END, START, StateGraph
 
+from app.checks import cpu_check
 from app.collectors import collect_logs, collect_metrics
 from app.config import get_settings
 
@@ -32,7 +33,7 @@ Rules:
 - Only name a cause that the evidence or the alert text actually supports.
 - If the evidence does not show a cause, write that the root cause is undetermined from the available evidence, and give the most common causes for this kind of alert as things to check.
 - cpu_rate_5m is CPU cores in use: 0.01 means 1 percent of one core, 0.9 means 90 percent. Compare it with any CPU figure in the alert text.
-- If a measured value is far from what the alert claims, the first sentence of ROOT CAUSE must start with "The evidence contradicts the alert:" and give both numbers, then say the alert is likely a false positive or stale.
+- A line starting "CHECK: MISMATCH" was computed by code and is correct. When it is present, the first sentence of ROOT CAUSE must start with "The evidence contradicts the alert:" and copy both numbers from that line exactly, then say the alert is likely a false positive or stale. Never recalculate them. A line starting "CHECK: CONSISTENT" means do not claim a contradiction.
 
 Reply in exactly this format and nothing else:
 ROOT CAUSE: 2-3 sentences.
@@ -69,7 +70,10 @@ def gather_evidence(state: IncidentState) -> dict:
     labels = state.get("labels", {})
     metrics = collect_metrics(labels)
     logs = collect_logs(labels)
-    return {"evidence": f"METRICS:\n{metrics}\n\nLOGS:\n{logs}"}
+    check = cpu_check(
+        state.get("alertname", ""), state.get("annotations", {}), metrics
+    )
+    return {"evidence": f"METRICS:\n{metrics}\n\n{check}\n\nLOGS:\n{logs}"}
 
 
 def analyze(state: IncidentState) -> dict:
