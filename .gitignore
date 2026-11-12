@@ -6,3 +6,5 @@ __pycache__/
 .ruff_cache/
 *.log
 .DS_Store
+.env
+monitoring/alertmanager/webhook_token

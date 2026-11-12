@@ -1,0 +1,10 @@
+groups:
+  - name: agent
+    rules:
+      - alert: AgentDown
+        expr: up{job="agent"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The incident response agent is not responding to scrapes"
