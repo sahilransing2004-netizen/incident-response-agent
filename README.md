@@ -80,6 +80,8 @@ REMEDIATION: 1. Verify the alert rule: open its expression and threshold in Prom
 3. If the rule is correct and the value really is low, silence or resolve the alert and fix the rule so it stops firing on a healthy service.
 ```
 
+![Test alert run: the agent flags the alert as a false positive](docs/demo.png)
+
 Analysis takes a minute or two on CPU because the model is small and local. Previous incidents:
 
 ```bash
