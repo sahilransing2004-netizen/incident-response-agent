@@ -117,6 +117,6 @@ GitHub Actions runs lint, tests, a dependency vulnerability scan (`pip-audit`) a
 
 ## Known limitations
 
-- **No Loki in the Compose stack.** Log evidence reports "unavailable" and the agent says so instead of guessing. Adding Loki and Promtail is the next step.
+- **Log evidence only helps LLM-path alerts.** Loki and Grafana Alloy are in the Compose stack and `collect_logs` reads container logs by `compose_service`. A CPU mismatch is answered in code without calling the model, so its output does not use the logs. The Alloy container mounts the Docker socket read-only to collect logs, which still gives it broad access to Docker, so review that before running this on a shared machine.
 - **Small local model.** `llama3.2:3b` is only used when the evidence does not contradict the alert. The mismatch check and its response are computed in code, because the model got arithmetic wrong and sometimes ignored prompt rules. For other cases it can still miss a rule, so treat its output as a starting point.
 - The metric queries are tuned for CPU-style alerts; other alert types get the same three metrics. The code-side mismatch check covers CPU alerts only.
