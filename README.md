@@ -24,7 +24,7 @@ flowchart LR
 The analysis runs as a small [LangGraph](https://github.com/langchain-ai/langgraph) pipeline with two nodes:
 
 1. **gather_evidence** queries Prometheus for `up`, `cpu_rate_5m` and `resident_memory_bytes` for the alert's job, and Loki for logs when it is reachable.
-2. **analyze** sends the alert plus the evidence to the model and parses a `ROOT CAUSE` and `REMEDIATION` out of the reply.
+2. **analyze** compares the alert's CPU claim with the measured value in code. On a mismatch it writes the answer itself; otherwise it sends the alert and evidence to the model and parses a `ROOT CAUSE` and `REMEDIATION` out of the reply.
 
 Design choices worth knowing:
 
@@ -74,9 +74,10 @@ Real output, with the alert claiming 90% CPU while Prometheus measures almost no
 ```text
 webhook response: {"accepted":[5]}
 waiting for analysis of incident 5 (up to 150s)...
-ROOT CAUSE: The evidence contradicts the alert: the cpu_rate_5m is 0.0022457322315209568, which is 0.03% of CPU cores in use, not 90% as stated in the alert. This suggests the alert is likely a false positive or stale, and further investigation is needed to determine the actual cause.
-REMEDIATION: 1. Check the Prometheus instance logs for any configuration changes or recent updates that could be causing the discrepancy.
-...
+ROOT CAUSE: The evidence contradicts the alert: it claims 90% CPU but Prometheus measured 0.01% of one core, so the alert is likely a false positive or stale. The root cause of the original alert is undetermined from the evidence; the alert rule or a stale alert is the first thing to check.
+REMEDIATION: 1. Verify the alert rule: open its expression and threshold in Prometheus and confirm it queries the metric and job you expect.
+2. Check whether the alert is stale: compare when it started firing with the current value, and look for old or duplicate alerts in Alertmanager.
+3. If the rule is correct and the value really is low, silence or resolve the alert and fix the rule so it stops firing on a healthy service.
 ```
 
 Analysis takes a minute or two on CPU because the model is small and local. Previous incidents:
@@ -115,5 +116,5 @@ GitHub Actions runs lint, tests, a dependency vulnerability scan (`pip-audit`) a
 ## Known limitations
 
 - **No Loki in the Compose stack.** Log evidence reports "unavailable" and the agent says so instead of guessing. Adding Loki and Promtail is the next step.
-- **Small local model.** `llama3.2:3b` follows the prompt rules well enough to flag contradictions, but it can get arithmetic wrong (the example above says 0.03% for a value that is about 0.22%) and occasionally ignores a rule. Computing the comparison in code and handing the model a ready-made mismatch line would remove that dependence.
-- The metric queries are tuned for CPU-style alerts; other alert types get the same three metrics.
+- **Small local model.** `llama3.2:3b` is only used when the evidence does not contradict the alert. The mismatch check and its response are computed in code, because the model got arithmetic wrong and sometimes ignored prompt rules. For other cases it can still miss a rule, so treat its output as a starting point.
+- The metric queries are tuned for CPU-style alerts; other alert types get the same three metrics. The code-side mismatch check covers CPU alerts only.
