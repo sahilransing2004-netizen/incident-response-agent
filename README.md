@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/sahilransing2004-netizen/incident-response-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/sahilransing2004-netizen/incident-response-agent/actions/workflows/ci.yml)
 
-An alert-triage service for on-call engineers. Alertmanager sends a firing alert to a webhook; the agent pulls live evidence from Prometheus (and Loki, if available), asks a local LLM for a root-cause analysis and remediation steps, and stores the result so it can be read from an API.
+An alert-triage service for on-call engineers. Alertmanager sends a firing alert to a webhook; the agent pulls live evidence from Prometheus and Loki, asks a local LLM for a root-cause analysis and remediation steps, and stores the result so it can be read from an API.
 
 It runs fully locally: the model is served by [Ollama](https://ollama.com), so no alert data leaves your machine.
 
@@ -14,7 +14,7 @@ flowchart LR
     A -->|POST /webhook/alertmanager| G[Agent API - FastAPI]
     G --> E[gather_evidence]
     E -->|metrics| P
-    E -.->|logs, optional| L[Loki]
+    E -->|logs| L[Loki]
     E --> N[analyze]
     N -->|prompt| O[Ollama - llama3.2:3b]
     N --> D[(Postgres)]
@@ -23,7 +23,7 @@ flowchart LR
 
 The analysis runs as a small [LangGraph](https://github.com/langchain-ai/langgraph) pipeline with two nodes:
 
-1. **gather_evidence** queries Prometheus for `up`, `cpu_rate_5m` and `resident_memory_bytes` for the alert's job, and Loki for logs when it is reachable.
+1. **gather_evidence** queries Prometheus for `up`, `cpu_rate_5m` and `resident_memory_bytes` for the alert's job, and Loki for container logs, reporting them as unavailable if Loki cannot be reached.
 2. **analyze** compares the alert's CPU claim with the measured value in code. On a mismatch it writes the answer itself; otherwise it sends the alert and evidence to the model and parses a `ROOT CAUSE` and `REMEDIATION` out of the reply.
 
 Design choices worth knowing:
@@ -99,7 +99,7 @@ curl -H "X-Webhook-Token: $TOKEN" http://localhost:8001/incidents/5
 | `OLLAMA_URL` | `http://host.docker.internal:11434` | |
 | `OLLAMA_MODEL` | `llama3.2:3b` | |
 | `PROMETHEUS_URL` | `http://prometheus:9090` | |
-| `LOKI_URL` | `http://loki:3100` | Optional, see limitations |
+| `LOKI_URL` | `http://loki:3100` | Loki address for log evidence |
 | `LLM_TIMEOUT_SECONDS` | `120` | |
 
 `POSTGRES_PASSWORD` and `GRAFANA_PASSWORD` are read by Compose from `.env`.
